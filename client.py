@@ -3,108 +3,49 @@ import re
 import json
 
 class Client:
-    def __init__(self, *args, **kwargs):
-        self._client_id: Optional[int] = None
+    def __init__(self, last_name: str, first_name: str, patronymic: str, phone: str):
+
         self._last_name: str = ""
         self._first_name: str = ""
         self._patronymic: str = ""
         self._phone: str = ""
-        self._email: str = ""
-
-        # CSV строка
-        if len(args) == 1 and isinstance(args[0], str):
-            line = args[0].strip()
-            parts = [p.strip() for p in line.split(",")]
-            if len(parts) not in (5, 6):
-                raise ValueError("CSV строка должна содержать 5 или 6 значений")
-            last_name, first_name, patronymic, phone, email = parts[:5]
-            client_id = int(parts[5]) if len(parts) == 6 else None
-
-        # Словарь / JSON
-        elif len(args) == 1 and isinstance(args[0], dict):
-            data = args[0]
-            last_name = data["last_name"]
-            first_name = data["first_name"]
-            patronymic = data["patronymic"]
-            phone = data["phone"]
-            email = data["email"]
-            client_id = data.get("client_id")
-
-        # Параметры через ключевые аргументы
-        else:
-            last_name = kwargs.get("last_name")
-            first_name = kwargs.get("first_name")
-            patronymic = kwargs.get("patronymic")
-            phone = kwargs.get("phone")
-            email = kwargs.get("email")
-            client_id = kwargs.get("client_id")
-
-        # Валидация и присвоение через сеттеры
+        #валидация в сеттерах
         self.last_name = last_name
         self.first_name = first_name
         self.patronymic = patronymic
         self.phone = phone
-        self.email = email
-        if client_id is not None:
-            self.client_id = client_id
-
-    @staticmethod
-    def validate_client_id(value: int) -> int:
-        if not isinstance(value, int) or value <= 0:
-            raise ValueError("client_id должен быть положительным числом")
-        return value
 
     @staticmethod
     def validate_name(value: str, field_label: str) -> str:
-        if not value or value.strip() == "":
-            raise ValueError(f"{field_label} обязателен(а)")
-        s = " ".join(value.split())
+        if not value or str(value).strip() == "":
+            raise ValueError(f"{field_label} обязателен")
+        s = " ".join(str(value).split())
         if not re.fullmatch(r"[A-Za-zА-Яа-яЁё'\- ]+", s):
             raise ValueError(f"{field_label} содержит недопустимые символы")
-        return " ".join(part.capitalize() for part in s.split(" "))
+        return s.capitalize()
 
     @staticmethod
     def validate_phone(value: str, field_label: str) -> str:
-        if not value or value.strip() == "":
-            raise ValueError(f"{field_label} обязателен(а)")
-        digits = re.sub(r"\D", "", value)
+        if not value or str(value).strip() == "":
+            raise ValueError(f"{field_label} обязателен")
+        digits = re.sub(r"\D", "", str(value))
         if not (10 <= len(digits) <= 15):
             raise ValueError(f"{field_label} должен содержать от 10 до 15 цифр")
         return "+" + digits
 
-    @staticmethod
-    def validate_email(value: str) -> str:
-        if not value or value.strip() == "":
-            raise ValueError("Email обязателен")
-        s = value.strip()
-        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", s):
-            raise ValueError("Некорректный формат email")
-        return s.lower()
-
-
-    # Универсальный метод для сеттеров (убираем повтор кода)
+    #Универсальный сеттер
     def _set_field(self, field_name: str, value, validator, *args):
         validated_value = validator(value, *args) if args else validator(value)
         setattr(self, f"_{field_name}", validated_value)
 
     # Свойства (инкапсуляция)
     @property
-    def client_id(self) -> Optional[int]:
-        return self._client_id
-
-    @client_id.setter
-    def client_id(self, value: int):
-        if self._client_id is not None:
-            raise AttributeError("client_id уже установлен")
-        self._set_field("client_id", value, Client.validate_client_id)
-
-    @property
     def last_name(self) -> str:
         return self._last_name
 
     @last_name.setter
     def last_name(self, value: str):
-        self._set_field("last_name", value, Client.validate_name, "last_name")
+        self._set_field("last_name", value, Client.validate_name, "Фамилия")
 
     @property
     def first_name(self) -> str:
@@ -112,7 +53,7 @@ class Client:
 
     @first_name.setter
     def first_name(self, value: str):
-        self._set_field("first_name", value, Client.validate_name, "first_name")
+        self._set_field("first_name", value, Client.validate_name, "Имя")
 
     @property
     def patronymic(self) -> str:
@@ -120,7 +61,7 @@ class Client:
 
     @patronymic.setter
     def patronymic(self, value: str):
-        self._set_field("patronymic", value, Client.validate_name, "patronymic")
+        self._set_field("patronymic", value, Client.validate_name, "Отчество")
 
     @property
     def phone(self) -> str:
@@ -130,84 +71,144 @@ class Client:
     def phone(self, value: str):
         self._set_field("phone", value, Client.validate_phone, "Телефон")
 
+    # Методы
+    def short_str(self) -> str:
+        initials = f"{self.first_name[0]}.{self.patronymic[0]}." if self.patronymic else f"{self.first_name[0]}."
+        return f"{self.last_name} {initials} Tel:{self.phone}"
+
+    def full_str(self) -> str:
+        return f"{self.last_name} {self.first_name} {self.patronymic}, Телефон: {self.phone}"
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Client):
+            return False
+        return (
+                self.last_name == other.last_name and
+                self.first_name == other.first_name and
+                self.patronymic == other.patronymic and
+                self.phone == other.phone
+        )
+
+    # Альтернативные конструкторы
+    @classmethod
+    def from_csv(cls, csv_str: str):
+        parts = [p.strip() for p in csv_str.strip().split(",")]
+        if len(parts) != 4:
+            raise ValueError("CSV для ClientSummary: last,first,patronymic,phone")
+        return cls(parts[0], parts[1], parts[2], parts[3])
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data["last_name"], data["first_name"], data["patronymic"], data["phone"])
+
+    @classmethod
+    def from_json(cls, json_str: str):
+        data = json.loads(json_str)
+        return cls.from_dict(data)
+
+# Полный класс: BigClient
+class BigClient(Client):
+
+    #Полная версия клиента: client_id + email.
+    def __init__(self, *args, **kwargs):
+        self._client_id: Optional[int] = None
+        self._email: str = ""
+        if len(args) == 1 and isinstance(args[0], str):  # CSV
+            parts = [p.strip() for p in args[0].strip().split(",")]
+            if len(parts) != 6:
+                raise ValueError("CSV для Client: client_id,last,first,patronymic,phone,email")
+            client_id, last, first, patr, phone, email = parts
+            client_id = int(client_id)
+        elif len(args) == 1 and isinstance(args[0], dict):  # dict
+            d = args[0]
+            client_id = d["client_id"]
+            last = d["last_name"]
+            first = d["first_name"]
+            patr = d["patronymic"]
+            phone = d["phone"]
+            email = d["email"]
+        else:  # kwargs
+            client_id = kwargs.get("client_id")
+            last = kwargs.get("last_name")
+            first = kwargs.get("first_name")
+            patr = kwargs.get("patronymic")
+            phone = kwargs.get("phone")
+            email = kwargs.get("email")
+
+        super().__init__(last, first, patr, phone)
+
+        self.client_id = client_id
+        self.email = email
+
+    #Валидаторы
+    @staticmethod
+    def validate_client_id(value: int) -> int:
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError("client_id должен быть положительным и целым числом")
+        return value
+
+    @staticmethod
+    def validate_email(value: str) -> str:
+        if not value or str(value).strip() == "":
+            raise ValueError("Email обязателен")
+        s = str(value).strip()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", s):
+            raise ValueError("Некорректный email")
+        return s.lower()
+
+    # ---------- Свойства ----------
+    @property
+    def client_id(self) -> int:
+        return self._client_id
+
+    @client_id.setter
+    def client_id(self, value: int):
+        self._set_field("client_id", value, BigClient.validate_client_id)
+
     @property
     def email(self) -> str:
         return self._email
 
     @email.setter
     def email(self, value: str):
-        self._set_field("email", value, Client.validate_email)
+        self._set_field("email", value, BigClient.validate_email)
 
-
-    # Методы для вывода и сравнения
+    # ---------- Методы ----------
     def full_str(self) -> str:
-        return (f"Client({self.client_id}): {self.last_name} {self.first_name} "
-                f"{self.patronymic}, Телефон: {self.phone}, Email: {self.email}")
-
-    def short_str(self) -> str:
-        initials = f"{self.first_name[0]}.{self.patronymic[0]}." if self.patronymic else f"{self.first_name[0]}."
-        return f"{self.last_name} {initials}, Тел: {self.phone}"
+        return (f"Client(id={self.client_id}): {self.last_name} {self.first_name} {self.patronymic}, "
+                f"Телефон: {self.phone}, Email: {self.email}")
 
     def __eq__(self, other) -> bool:
-        if not isinstance(other, Client):
+        if not isinstance(other, BigClient):
             return False
-        return (self.client_id == other.client_id and
-                self.last_name == other.last_name and
-                self.first_name == other.first_name and
-                self.patronymic == other.patronymic and
-                self.phone == other.phone and
-                self.email == other.email)
+        return self.client_id == other.client_id
 
+    # ---------- Альтернативные конструкторы ----------
+    @classmethod
+    def from_csv(cls, csv_str: str):
+        return cls(csv_str)
 
-# Класс ClientShort (краткая версия)
-class ClientShort(Client):
-    def __init__(self, client: Client):
-        super().__init__(
-            last_name=client.last_name,
-            first_name=client.first_name,
-            patronymic=client.patronymic,
-            phone=client.phone,
-            email=client.email,
-            client_id=client.client_id
-        )
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data)
 
-    def full_str(self):
-        return self.short_str()
+    @classmethod
+    def from_json(cls, json_str: str):
+        data = json.loads(json_str)
+        return cls.from_dict(data)
 
-# Пример использования
-
+# Демонстрация
 if __name__ == "__main__":
-    # Через отдельные аргументы
-    c1 = Client(
-        last_name="Иванов",
-        first_name="Иван",
+    c1 = BigClient(
+        client_id=1,
+        last_name="Дедушкин",
+        first_name="Серафим",
         patronymic="Иванович",
-        phone="+7 999 123-45-67",
-        email="ivanov@mail.com",
-        client_id=1
+        phone="+7 921 123-45-67",
+        email="ivanovich@mail.com"
     )
-
-    # Через CSV строку
-    c2 = Client("Петров,Пётр,Петрович,+7 999 987-65-43,petrov@mail.com,2")
-
-    # Через словарь / JSON
-    data = {
-        "last_name": "Сидоров",
-        "first_name": "Сидор",
-        "patronymic": "Сидорович",
-        "phone": "+7 999 555-55-55",
-        "email": "sidorov@mail.com",
-        "client_id": 3
-    }
-    c3 = Client(data)
-
-    # Вывод
     print(c1.full_str())
-    print(c2.short_str())
+    print(c1.short_str())
 
-    # Сравнение
-    print(c1 == c2)
-
-    # Краткая версия через наследование
-    cs = ClientShort(c3)
-    print(cs.full_str())
+    c2 = BigClient("2,Бабушкина,Марфа,Петровна,+7 999 555-55-55,petrovna@mail.com")
+    print(c2.full_str())
