@@ -8,12 +8,14 @@ class Client:
                  patronymic: Optional[str],
                  phone: str,
                  email: str ):
-        self.__client_id = self.validate_client_id(client_id)
-        self.__last_name = self.validate_last_name(last_name)
-        self.__first_name = self.validate_first_name(first_name)
-        self.__patronymic = self.validate_patronymic(patronymic)
-        self.__phone = self.validate_phone(phone)
-        self.__email = self.validate_email(email)
+
+        self._set_field("client_id", client_id, self.validate_client_id)
+        self._set_field("last_name", last_name, self.validate_last_name)
+        self._set_field("first_name", first_name, self.validate_first_name)
+        self._set_field("patronymic", patronymic, self.validate_patronymic)
+        self._set_field("phone", phone, self.validate_phone)
+        self._set_field("email", email, self.validate_email)
+
 
         def get_client_id(self) ->int:
             return self.__client_id
@@ -27,6 +29,24 @@ class Client:
             return self.__phone
         def get_email(self) -> str:
             return phone
+
+
+        def _set_field(self, field_name: str, value):
+            if field_name == "client_id":
+                self.__client_id = self.validate_client_id(value)
+            elif field_name == "last_name":
+                self.__last_name = self.validate_last_name(value)
+            elif field_name == "first_name":
+                self.__first_name = self.validate_first_name(value)
+            elif field_name == "patronymic":
+                self.__patronymic = self.validate_patronymic(value)
+            elif field_name == "phone":
+                self.__phone = self.validate_phone(value)
+            elif field_name == "email":
+                self.__email = self.validate_email(value)
+            else:
+                raise ValueError(f"Неизвестное поле: {field_name}")
+
 
         def validate_client_id(client_id: int) -> int:
             if not isinstance(client_id, int) or client_id <=0:
@@ -66,6 +86,7 @@ class Client:
                 raise ValueError("Поле email не соответствует простому формату адреса!")
             self.__email=email_clean
 
+
         def set_client_id(self, client_id: int) -> None:
             self.__client_id = self.validate_client_id(client_id)
 
@@ -83,4 +104,4 @@ class Client:
 
         def set_email(self, email: str) -> None:
             self.__email = self.validate_email(email)
-            
+
