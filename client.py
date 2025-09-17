@@ -1,20 +1,35 @@
+import json
 import re
 from typing import Optional, Dict, Any
 class Client:
-    def __init__(self,
-                 client_id: int,
-                 last_name: str,
-                 first_name: str,
-                 patronymic: Optional[str],
-                 phone: str,
-                 email: str ):
+    def __init__(self, *args, **kwargs ):
+        data = {}
 
-        self._set_field("client_id", client_id, self.validate_client_id)
-        self._set_field("last_name", last_name, self.validate_last_name)
-        self._set_field("first_name", first_name, self.validate_first_name)
-        self._set_field("patronymic", patronymic, self.validate_patronymic)
-        self._set_field("phone", phone, self.validate_phone)
-        self._set_field("email", email, self.validate_email)
+        if len(args) == 1:
+            first = args[0]
+            if isinstance(first, dict):
+                data = first
+            elif isinstance(first, str):
+                try:
+                    data = json.loads(first)
+                except json.JSONDecodeError:
+                    raise ValueError("Строка не является корректным JSON")
+            else:
+                raise ValueError("Неподдерживаемый тип аргумента")
+        elif len(args) == 6:
+            keys = ["client_id", "last_name", "first_name", "patronymic", "phone", "email"]
+            data = dict(zip(keys, args))
+        elif kwargs:
+            data = kwargs
+        else:
+            raise ValueError("Неверные аргументы конструктора")
+
+        self._set_field("client_id", data.get("client_id"))
+        self._set_field("last_name", data.get("last_name"))
+        self._set_field("first_name", data.get("first_name"))
+        self._set_field("patronymic", data.get("patronymic"))
+        self._set_field("phone", data.get("phone"))
+        self._set_field("email", data.get("email"))
 
 
         def get_client_id(self) ->int:
@@ -28,7 +43,7 @@ class Client:
         def get_phone(self)-> str:
             return self.__phone
         def get_email(self) -> str:
-            return phone
+            return self.__email
 
 
         def _set_field(self, field_name: str, value):
