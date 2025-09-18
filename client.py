@@ -59,6 +59,28 @@ class Client:
             return self.__email
 
 
+    def __repr__(self) ->str:
+        return (f"Client(client_id={self.__client_id}, "
+                f"last_name='{self.__last_name}', "
+                f"first_name='{self.__first_name}', "
+                f"patronymic='{self.__patronymic}', "
+                f"phone='{self.__phone}', "
+                f"email='{self.__email}')")
+
+    def __str__(self) -> str:
+        return f"{self.__last_name} {self.__first_name} {self.__patronymic} ({self.__email})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Client):
+            return NotImplemented
+        return (self.__client_id == other.__client_id
+                and self.__last_name == other.__last_name
+                and self.__first_name == other.__first_name
+                and self.__patronymic == other.__patronymic
+                and self.__phone == other.__phone
+                and self.__email == other.__email)
+
+
     def _set_field(self, field_name: str, value):
         if field_name == "client_id":
             self.__client_id = self.validate_client_id(value)
