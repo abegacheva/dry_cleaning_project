@@ -4,38 +4,7 @@ from typing import Optional, Dict, Any
 class Client:
     def __init__(self, *args, **kwargs ):
 
-        data = {}
-
-        if len(args) == 1:
-            first = args[0]
-            if isinstance(first, dict):
-                data = first
-            elif isinstance(first, str):
-                try:
-                    data = json.loads(first)
-                except json.JSONDecodeError:
-                    parts = [p.strip() for p in first.split(",")]
-                    if len(parts) == 6:
-                        keys = ["client_id", "last_name", "first_name", "patronymic", "phone", "email"]
-                        data = dict(zip(keys, parts))
-                        try:
-                            data["client_id"] = int(data["client_id"])
-                        except ValueError:
-                            raise ValueError("client_id в CSV должен быть целым числом")
-                    else:
-                        raise ValueError("Строка не является корректным JSON или CSV")
-            else:
-                raise ValueError("Неподдерживаемый тип аргумента")
-
-        elif len(args) == 6:
-            keys = ["client_id", "last_name", "first_name", "patronymic", "phone", "email"]
-            data = dict(zip(keys, args))
-
-        elif kwargs:
-            data = kwargs
-
-        else:
-            raise ValueError("Неверные аргументы конструктора")
+        data = self._parse_args(*args,**kwargs)
 
         self._set_field("client_id", data.get("client_id"))
         self._set_field("last_name", data.get("last_name"))
@@ -43,6 +12,33 @@ class Client:
         self._set_field("patronymic", data.get("patronymic"))
         self._set_field("phone", data.get("phone"))
         self._set_field("email", data.get("email"))
+
+    def _parse_args(self, *args, **kwargs):
+        if len(args) == 1:
+            first = args[0]
+            if isinstance(first, dict):
+                return first
+            elif isinstance(first, str):
+                try:
+                    return json.loads(first)
+                except json.JSONDecodeError:
+                    parts = [p.strip() for p in first.split(",")]
+                    if len(parts) == 6:
+                        keys = ["client_id", "last_name", "first_name", "patronymic", "phone", "email"]
+                        data = dict(zip(keys, parts))
+                        data["client_id"] = int(data["client_id"])
+                        return data
+                    else:
+                        raise ValueError("Строка не является корректным JSON или CSV")
+            else:
+                raise ValueError("Неподдерживаемый тип аргумента")
+        elif len(args) == 6:
+            keys = ["client_id", "last_name", "first_name", "patronymic", "phone", "email"]
+            return dict(zip(keys, args))
+        elif kwargs:
+            return kwargs
+        else:
+            raise ValueError("Неверные аргументы конструктора")
 
 
     def get_client_id(self) ->int:
@@ -60,15 +56,19 @@ class Client:
 
 
     def __repr__(self) ->str:
+        patronymic = f"'{self.__patronymic}'" if self.__patronymic else "None"
         return (f"Client(client_id={self.__client_id}, "
                 f"last_name='{self.__last_name}', "
                 f"first_name='{self.__first_name}', "
-                f"patronymic='{self.__patronymic}', "
+                f"patronymic={patronymic}, "
                 f"phone='{self.__phone}', "
                 f"email='{self.__email}')")
 
     def __str__(self) -> str:
-        return f"{self.__last_name} {self.__first_name} {self.__patronymic} ({self.__email})"
+        full_name = f"{self.__last_name} {self.__first_name}"
+        if self.__patronymic:
+            full_name += f" {self.__patronymic}"
+        return f"{full_name} ({self.__email}, {self.__phone})"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Client):
@@ -160,3 +160,94 @@ class Client:
     def set_email(self, email: str) -> None:
         self.__email = self.validate_email(email)
 
+
+class ClientShort(Client):
+    def __init__(self, client: Client):
+        super().__init__(
+            client_id=client.get_client_id(),
+            last_name=client.get_last_name(),
+            first_name=client.get_first_name(),
+            patronymic=client.get_patronymic(),
+            phone=client.get_phone(),
+            email=client.get_email()
+        )
+        # Формируем Фамилия + инициалы
+        first = self.get_first_name()
+        patr = self.get_patronymic()
+        initials = ""
+        if first: initials += first[0] + "."
+        if patr: initials += patr[0] + "."
+        self.__name_short__ = f"{self.get_last_name()} {initials}".strip()
+        self.__contact__ = self.get_email()
+
+    def get_client_id(self):
+        return self.get_client_id()
+
+    def get_name_short(self):
+        return self.__name_short__
+
+    def get_contact(self):
+        return self.__contact__
+
+    def __repr__(self):
+        return f"ClientShort(client_id={self.get_client_id()}, name='{self.__name_short__}', contact='{self.__contact__}')"
+
+    def __str__(self):
+        return f"{self.__name_short__} ({self.__contact__})"
+
+    def __eq__(self, other):
+        if isinstance(other, ClientShort):
+            return self.get_client_id() == other.get_client_id()
+        return False
+
+
+print("\nСоздание через словарь")
+print("--------------------------------------------")
+client_dict = Client({
+    "client_id": 1,
+    "last_name": "Бабушкина",
+    "first_name": "Марфа",
+    "patronymic": "Петровна",
+    "phone": "+7 912 345-67-89",
+    "email": "petrovna1940@gmail.com"
+})
+print(client_dict)
+print(ClientShort(client_dict))
+print("--------------------------------------------")
+
+print("\nСоздание через JSON-строку")
+print("--------------------------------------------")
+json_str = '{"client_id": 2, "last_name": "Дедушкин", "first_name": "Аркадий", "patronymic": "Петрович", "phone": "+7 999 111-22-33", "email": "petrovich1939@gmail.com"}'
+client_json = Client(json_str)
+print(client_json)
+print(ClientShort(client_json))
+print("--------------------------------------------")
+
+print("\nСоздание через CSV-строку")
+print("--------------------------------------------")
+csv_str = "3, Холланд, Том, , +7 888 777-66-55, TomHolland@mail.ru"
+client_csv = Client(csv_str)
+print(client_csv)
+print(ClientShort(client_csv))
+print("--------------------------------------------")
+
+print("\nСоздание через позиционные аргументы")
+print("--------------------------------------------")
+client_args = Client(4, "Гослинг", "Райан", None, "+7 123 456-78-90", "superstar@example.com")
+print(client_args)
+print(ClientShort(client_args))
+print("--------------------------------------------")
+
+print("\nСоздание через именованные аргументы")
+print("--------------------------------------------")
+client_kwargs = Client(
+    client_id=5,
+    last_name="Кодиков",
+    first_name="Программист",
+    patronymic="Скриптович",
+    phone="+7 321 654-98-76",
+    email="superproger@gmail.com"
+)
+print(client_kwargs)
+print(ClientShort(client_kwargs))
+print("--------------------------------------------")
