@@ -171,17 +171,25 @@ class ClientShort(Client):
             phone=client.get_phone(),
             email=client.get_email()
         )
-        # Формируем Фамилия + инициалы
+        # Полное ФИО
+        parts = [self.get_last_name(), self.get_first_name()]
+        if self.get_patronymic():
+            parts.append(self.get_patronymic())
+        self.full_name = " ".join(parts)
+
+        # Фамилия + инициалы
+        initials = ""
         first = self.get_first_name()
         patr = self.get_patronymic()
-        initials = ""
-        if first: initials += first[0] + "."
-        if patr: initials += patr[0] + "."
+        if first:
+            initials += first[0] + "."
+        if patr:
+            initials += patr[0] + "."
         self.__name_short__ = f"{self.get_last_name()} {initials}".strip()
         self.__contact__ = self.get_email()
 
     def get_client_id(self):
-        return self.get_client_id()
+        return super().get_client_id()
 
     def get_name_short(self):
         return self.__name_short__
@@ -190,15 +198,19 @@ class ClientShort(Client):
         return self.__contact__
 
     def __repr__(self):
-        return f"ClientShort(client_id={self.get_client_id()}, name='{self.__name_short__}', contact='{self.__contact__}')"
+        return (f"ClientShort(client_id={super().get_client_id()}, "
+                f"full_name='{self.full_name}', "
+                f"name_short='{self.__name_short__}', "
+                f"contact='{self.__contact__}')")
 
     def __str__(self):
         return f"{self.__name_short__} ({self.__contact__})"
 
     def __eq__(self, other):
         if isinstance(other, ClientShort):
-            return self.get_client_id() == other.get_client_id()
+            return super().get_client_id() == other.get_client_id()
         return False
+
 
 
 print("\nСоздание через словарь")
