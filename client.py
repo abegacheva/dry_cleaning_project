@@ -1,6 +1,8 @@
 import json
 import re
 from typing import Optional, Dict, Any
+
+
 class Client:
     def __init__(self, *args, **kwargs ):
 
@@ -13,7 +15,8 @@ class Client:
         self._set_field("phone", data.get("phone"))
         self._set_field("email", data.get("email"))
 
-    def _parse_args(self, *args, **kwargs):
+    @staticmethod
+    def _parse_args(*args, **kwargs):
         if len(args) == 1:
             first = args[0]
             if isinstance(first, dict):
@@ -40,19 +43,18 @@ class Client:
         else:
             raise ValueError("Неверные аргументы конструктора")
 
-
     def get_client_id(self) ->int:
-            return self.__client_id
+        return self.__client_id
     def get_last_name(self) -> str:
-            return self.__last_name
+        return self.__last_name
     def get_first_name(self) -> str:
-            return self.__first_name
+        return self.__first_name
     def get_patronymic(self) -> Optional[str]:
-            return self.__patronymic
+        return self.__patronymic
     def get_phone(self)-> str:
-            return self.__phone
+        return self.__phone
     def get_email(self) -> str:
-            return self.__email
+        return self.__email
 
 
     def __repr__(self) ->str:
@@ -85,9 +87,9 @@ class Client:
         if field_name == "client_id":
             self.__client_id = self.validate_client_id(value)
         elif field_name == "last_name":
-            self.__last_name = self.validate_last_name(value)
+            self.__last_name = self.validate_name(value, 'last_name')
         elif field_name == "first_name":
-            self.__first_name = self.validate_first_name(value)
+            self.__first_name = self.validate_name(value, 'first_name')
         elif field_name == "patronymic":
             self.__patronymic = self.validate_patronymic(value)
         elif field_name == "phone":
@@ -104,31 +106,27 @@ class Client:
         return client_id
 
     @staticmethod
-    def validate_last_name(last_name: str) -> str:
-        if not isinstance(last_name, str) or not last_name.strip():
-            raise ValueError("Поле last_name должно быть непустой строкой!")
-        return last_name.strip()
+    def validate_name(name: str, type_name: str) -> str:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(f"Поле {type_name} должно быть непустой строкой!")
+        if re.match(r"[^а-яё\-`']", name, flags=re.IGNORECASE):
+            raise ValueError(f"В {type_name} содержатся недопустимые символы")
 
-    @staticmethod
-    def validate_first_name(first_name: str) -> str:
-        if not isinstance(first_name, str) or not first_name.strip():
-              raise ValueError("Поле first_name должно быть непустой строкой!")
-        return first_name.strip()
+        return name.strip().capitalize()
 
     @staticmethod
     def validate_patronymic(patronymic: Optional[str]) -> Optional[str]:
-        if patronymic is None:
+        if patronymic is None or patronymic == '':
             return None
-        if not isinstance(patronymic, str):
-            raise ValueError("Поле patronymic должно быть строкой!")
-        return patronymic.strip() or None
+
+        return Client.validate_name(patronymic, 'patronymic')
 
     @staticmethod
     def validate_phone(phone: str) -> str:
         if not isinstance(phone, str) or not phone.strip():
             raise ValueError("Поле phone должно быть непустой строкой!")
         phone_clean=phone.strip()
-        if not re.compile(r"^[\d\+\-\s\(\)]+$").match(phone_clean):
+        if not re.match(r"^\+\d+\s\d{3}\s\d{3}-\d{2}-\d{2}$", phone_clean):
             raise ValueError("Поле phone содержит недопустимые символы!")
         return phone_clean
 
@@ -146,10 +144,10 @@ class Client:
         self.__client_id = self.validate_client_id(client_id)
 
     def set_last_name(self, last_name: str) -> None:
-        self.__last_name = self.validate_last_name(last_name)
+        self.__last_name = self.validate_name(last_name, 'last_name')
 
     def set_first_name(self, first_name: str) -> None:
-        self.__first_name = self.validate_first_name(first_name)
+        self.__first_name = self.validate_name(first_name, 'first_name')
 
     def set_patronymic(self, patronymic: Optional[str]) -> None:
         self.__patronymic = self.validate_patronymic(patronymic)
@@ -211,55 +209,54 @@ class ClientShort(Client):
             return super().get_client_id() == other.get_client_id()
         return False
 
+if __name__ == '__main__':
+    print("\nСоздание через словарь")
+    print("--------------------------------------------")
+    client_dict = Client({
+        "client_id": 1,
+        "last_name": "Бабушкина",
+        "first_name": "Марфа",
+        "patronymic": "Петровна",
+        "phone": "+7 912 345-67-89",
+        "email": "petrovna1940@gmail.com"
+    })
+    print(client_dict)
+    print(ClientShort(client_dict))
+    print("--------------------------------------------")
 
+    print("\nСоздание через JSON-строку")
+    print("--------------------------------------------")
+    json_str = '{"client_id": 2, "last_name": "Дедушкин", "first_name": "Аркадий", "patronymic": "Петрович", "phone": "+7 999 111-22-33", "email": "petrovich1939@gmail.com"}'
+    client_json = Client(json_str)
+    print(client_json)
+    print(ClientShort(client_json))
+    print("--------------------------------------------")
 
-print("\nСоздание через словарь")
-print("--------------------------------------------")
-client_dict = Client({
-    "client_id": 1,
-    "last_name": "Бабушкина",
-    "first_name": "Марфа",
-    "patronymic": "Петровна",
-    "phone": "+7 912 345-67-89",
-    "email": "petrovna1940@gmail.com"
-})
-print(client_dict)
-print(ClientShort(client_dict))
-print("--------------------------------------------")
+    print("\nСоздание через CSV-строку")
+    print("--------------------------------------------")
+    csv_str = "3, Холланд, Том, , +7 888 777-66-55, TomHolland@mail.ru"
+    client_csv = Client(csv_str)
+    print(client_csv)
+    print(ClientShort(client_csv))
+    print("--------------------------------------------")
 
-print("\nСоздание через JSON-строку")
-print("--------------------------------------------")
-json_str = '{"client_id": 2, "last_name": "Дедушкин", "first_name": "Аркадий", "patronymic": "Петрович", "phone": "+7 999 111-22-33", "email": "petrovich1939@gmail.com"}'
-client_json = Client(json_str)
-print(client_json)
-print(ClientShort(client_json))
-print("--------------------------------------------")
+    print("\nСоздание через позиционные аргументы")
+    print("--------------------------------------------")
+    client_args = Client(4, "Гослинг", "Райан", None, "+7 123 456-78-90", "superstar@example.com")
+    print(client_args)
+    print(ClientShort(client_args))
+    print("--------------------------------------------")
 
-print("\nСоздание через CSV-строку")
-print("--------------------------------------------")
-csv_str = "3, Холланд, Том, , +7 888 777-66-55, TomHolland@mail.ru"
-client_csv = Client(csv_str)
-print(client_csv)
-print(ClientShort(client_csv))
-print("--------------------------------------------")
-
-print("\nСоздание через позиционные аргументы")
-print("--------------------------------------------")
-client_args = Client(4, "Гослинг", "Райан", None, "+7 123 456-78-90", "superstar@example.com")
-print(client_args)
-print(ClientShort(client_args))
-print("--------------------------------------------")
-
-print("\nСоздание через именованные аргументы")
-print("--------------------------------------------")
-client_kwargs = Client(
-    client_id=5,
-    last_name="Кодиков",
-    first_name="Программист",
-    patronymic="Скриптович",
-    phone="+7 321 654-98-76",
-    email="superproger@gmail.com"
-)
-print(client_kwargs)
-print(ClientShort(client_kwargs))
-print("--------------------------------------------")
+    print("\nСоздание через именованные аргументы")
+    print("--------------------------------------------")
+    client_kwargs = Client(
+        client_id=5,
+        last_name="Кодиков",
+        first_name="Программист",
+        patronymic="Скриптович",
+        phone="+7 321 654-98-76",
+        email="superproger@gmail.com"
+    )
+    print(client_kwargs)
+    print(ClientShort(client_kwargs))
+    print("--------------------------------------------")
