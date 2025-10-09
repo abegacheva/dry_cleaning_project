@@ -109,9 +109,15 @@ class Client:
     def validate_name(name: str, type_name: str) -> str:
         if not isinstance(name, str) or not name.strip():
             raise ValueError(f"Поле {type_name} должно быть непустой строкой!")
-        if re.match(r"[A-Za-zА-ЯЁа-яё]+(?:[-\s][A-Za-zА-ЯЁа-яё]+)*", name, flags=re.IGNORECASE):
+        pattern = r"^[A-Za-zА-ЯЁа-яё]+(?:[-\s][A-Za-zА-ЯЁа-яё]+)*$"
+        if not re.fullmatch(pattern, name.strip()):
             raise ValueError(f"В {type_name} содержатся недопустимые символы")
-
+        parts = name.strip().split()
+        normalized = []
+        for part in parts:
+            subparts = part.split('-')
+            normalized.append('-'.join(s.capitalize() for s in subparts))
+        return " ".join(normalized)
         return name.strip().capitalize()
 
     @staticmethod
