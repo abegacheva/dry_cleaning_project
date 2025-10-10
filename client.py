@@ -165,8 +165,8 @@ class Client:
         self.__email = self.validate_email(email)
 
 
-class ClientShort(Client):
-    def __init__(self, client: Client):
+class RegularClient(Client):
+    def __init__(self, client: Client, address: Optional[str] = None, discount: float = 0.0):
         super().__init__(
             client_id=client.get_client_id(),
             last_name=client.get_last_name(),
@@ -175,45 +175,46 @@ class ClientShort(Client):
             phone=client.get_phone(),
             email=client.get_email()
         )
-        # Полное ФИО
+        # Добавленные поля
+        self.address = address
+        self.discount = self.validate_discount(discount)
+
+        # Полное имя (без инициалов)
         parts = [self.get_last_name(), self.get_first_name()]
         if self.get_patronymic():
             parts.append(self.get_patronymic())
         self.full_name = " ".join(parts)
 
-        # Фамилия + инициалы
-        initials = ""
-        first = self.get_first_name()
-        patr = self.get_patronymic()
-        if first:
-            initials += first[0] + "."
-        if patr:
-            initials += patr[0] + "."
-        self.__name_short__ = f"{self.get_last_name()} {initials}".strip()
-        self.__contact__ = self.get_email()
+    @staticmethod
+    def validate_discount(discount: float) -> float:
+        if not isinstance(discount, (int, float)) or not (0 <= discount <= 100):
+            raise ValueError("Скидка должна быть числом от 0 до 100!")
+        return float(discount)
 
     def get_client_id(self):
         return super().get_client_id()
 
-    def get_name_short(self):
-        return self.__name_short__
+    def get_address(self):
+        return self.address
 
-    def get_contact(self):
-        return self.__contact__
+    def get_discount(self):
+        return self.discount
 
     def __repr__(self):
-        return (f"ClientShort(client_id={super().get_client_id()}, "
+        return (f"RegularClient(client_id={super().get_client_id()}, "
                 f"full_name='{self.full_name}', "
-                f"name_short='{self.__name_short__}', "
-                f"contact='{self.__contact__}')")
+                f"address='{self.address}', "
+                f"discount={self.discount}%)")
 
     def __str__(self):
-        return f"{self.__name_short__} ({self.__contact__})"
+        return (f"{self.full_name} — скидка {self.discount}% "
+                f"({self.get_email()}, {self.get_phone()}, адрес: {self.address})")
 
     def __eq__(self, other):
-        if isinstance(other, ClientShort):
+        if isinstance(other, RegularClient):
             return super().get_client_id() == other.get_client_id()
         return False
+
 
 if __name__ == '__main__':
     print("\nСоздание через словарь")
@@ -227,7 +228,7 @@ if __name__ == '__main__':
         "email": "petrovna1940@gmail.com"
     })
     print(client_dict)
-    print(ClientShort(client_dict))
+    print(RegularClient(client_dict, address="г. Пермь, ул. Мира, 10", discount=5))
     print("--------------------------------------------")
 
     print("\nСоздание через JSON-строку")
@@ -235,7 +236,7 @@ if __name__ == '__main__':
     json_str = '{"client_id": 2, "last_name": "Дедушкин", "first_name": "Аркадий", "patronymic": "Петрович", "phone": "+7 999 111-22-33", "email": "petrovich1939@gmail.com"}'
     client_json = Client(json_str)
     print(client_json)
-    print(ClientShort(client_json))
+    print(RegularClient(client_json, address="г. Казань, ул. Баумана, 15", discount=10))
     print("--------------------------------------------")
 
     print("\nСоздание через CSV-строку")
@@ -243,14 +244,14 @@ if __name__ == '__main__':
     csv_str = "3, Холланд, Том, , +7 888 777-66-55, TomHolland@mail.ru"
     client_csv = Client(csv_str)
     print(client_csv)
-    print(ClientShort(client_csv))
+    print(RegularClient(client_csv, address="Лондон, Бейкер-стрит, 221Б", discount=7.5))
     print("--------------------------------------------")
 
     print("\nСоздание через позиционные аргументы")
     print("--------------------------------------------")
     client_args = Client(4, "Гослинг", "Райан", None, "+7 123 456-78-90", "superstar@example.com")
     print(client_args)
-    print(ClientShort(client_args))
+    print(RegularClient(client_args, address="Лос-Анджелес, Голливуд бульвар, 42", discount=12))
     print("--------------------------------------------")
 
     print("\nСоздание через именованные аргументы")
@@ -264,5 +265,5 @@ if __name__ == '__main__':
         email="superproger@gmail.com"
     )
     print(client_kwargs)
-    print(ClientShort(client_kwargs))
+    print(RegularClient(client_kwargs, address="г. Москва, ул. Питона, 3", discount=15))
     print("--------------------------------------------")
