@@ -4,9 +4,8 @@ from typing import Optional, Dict, Any
 
 
 class Client:
-    def __init__(self, *args, **kwargs ):
-
-        data = self._parse_args(*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        data = self._parse_args(*args, **kwargs)
 
         self._set_field("client_id", data.get("client_id"))
         self._set_field("last_name", data.get("last_name"))
@@ -29,7 +28,10 @@ class Client:
                     if len(parts) == 6:
                         keys = ["client_id", "last_name", "first_name", "patronymic", "phone", "email"]
                         data = dict(zip(keys, parts))
-                        data["client_id"] = int(data["client_id"])
+                        try:
+                            data["client_id"] = int(data["client_id"])
+                        except (ValueError, TypeError):
+                            data["client_id"] = None
                         return data
                     else:
                         raise ValueError("Строка не является корректным JSON или CSV")
@@ -43,21 +45,25 @@ class Client:
         else:
             raise ValueError("Неверные аргументы конструктора")
 
-    def get_client_id(self) ->int:
+    def get_client_id(self) -> Optional[int]:
         return self.__client_id
+
     def get_last_name(self) -> str:
         return self.__last_name
+
     def get_first_name(self) -> str:
         return self.__first_name
+
     def get_patronymic(self) -> Optional[str]:
         return self.__patronymic
-    def get_phone(self)-> str:
+
+    def get_phone(self) -> str:
         return self.__phone
+
     def get_email(self) -> str:
         return self.__email
 
-
-    def __repr__(self) ->str:
+    def __repr__(self) -> str:
         patronymic = f"'{self.__patronymic}'" if self.__patronymic else "None"
         return (f"Client(client_id={self.__client_id}, "
                 f"last_name='{self.__last_name}', "
@@ -82,10 +88,13 @@ class Client:
                 and self.__phone == other.__phone
                 and self.__email == other.__email)
 
-
     def _set_field(self, field_name: str, value):
         if field_name == "client_id":
-            self.__client_id = self.validate_client_id(value)
+            # Разрешаем None, если объект ещё не имеет ID
+            if value is None:
+                self.__client_id = None
+            else:
+                self.__client_id = self.validate_client_id(value)
         elif field_name == "last_name":
             self.__last_name = self.validate_name(value, 'last_name')
         elif field_name == "first_name":
@@ -101,7 +110,7 @@ class Client:
 
     @staticmethod
     def validate_client_id(client_id: int) -> int:
-        if not isinstance(client_id, int) or client_id <=0:
+        if not isinstance(client_id, int) or client_id <= 0:
             raise ValueError("Поле client_id должно быть целым положительным числом!")
         return client_id
 
@@ -118,20 +127,18 @@ class Client:
             subparts = part.split('-')
             normalized.append('-'.join(s.capitalize() for s in subparts))
         return " ".join(normalized)
-        return name.strip().capitalize()
 
     @staticmethod
     def validate_patronymic(patronymic: Optional[str]) -> Optional[str]:
         if patronymic is None or patronymic == '':
             return None
-
         return Client.validate_name(patronymic, 'patronymic')
 
     @staticmethod
     def validate_phone(phone: str) -> str:
         if not isinstance(phone, str) or not phone.strip():
             raise ValueError("Поле phone должно быть непустой строкой!")
-        phone_clean=phone.strip()
+        phone_clean = phone.strip()
         if not re.match(r"^\+\d+\s\d{3}\s\d{3}-\d{2}-\d{2}$", phone_clean):
             raise ValueError("Поле phone содержит недопустимые символы!")
         return phone_clean
@@ -140,14 +147,16 @@ class Client:
     def validate_email(email: str) -> str:
         if not isinstance(email, str) or not email.strip():
             raise ValueError("Поле email должно быть непустой строкой!")
-        email_clean=email.strip()
+        email_clean = email.strip()
         if not re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$").match(email_clean):
             raise ValueError("Поле email не соответствует простому формату адреса!")
         return email_clean
 
-
-    def set_client_id(self, client_id: int) -> None:
-        self.__client_id = self.validate_client_id(client_id)
+    def set_client_id(self, client_id: Optional[int]) -> None:
+        if client_id is None:
+            self.__client_id = None
+        else:
+            self.__client_id = self.validate_client_id(client_id)
 
     def set_last_name(self, last_name: str) -> None:
         self.__last_name = self.validate_name(last_name, 'last_name')
@@ -175,11 +184,8 @@ class RegularClient(Client):
             phone=client.get_phone(),
             email=client.get_email()
         )
-        # Добавленные поля
         self.address = address
         self.discount = self.validate_discount(discount)
-
-        # Полное имя (без инициалов)
         parts = [self.get_last_name(), self.get_first_name()]
         if self.get_patronymic():
             parts.append(self.get_patronymic())
