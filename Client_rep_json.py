@@ -1,25 +1,24 @@
-import json
-import os
+import json, os
 from Client import Client
 from ClientBase import ClientBase
 
 class Client_rep_json(ClientBase):
-    """
-    Реализует методы _load() и _save() для JSON
-    """
-    #Чтение всех значений из JSON
+    def __init__(self, filename: str):
+        self.filename = filename
+        super().__init__()
+
     def _load(self) -> None:
         if not os.path.exists(self.filename):
             self.data = []
             return
-        with open(self.filename, "r", encoding="utf-8") as file:
+        with open(self.filename, "r", encoding="utf-8") as f:
             try:
-                items = json.load(file)
+                items = json.load(f)
             except json.JSONDecodeError:
                 items = []
-        self.data = [Client(item) for item in items]
 
-    #Запись всех значений в JSON ---
+        self.data = [Client(**item) for item in items]
+
     def _save(self) -> None:
         items = []
         for client in self.data:
@@ -31,5 +30,5 @@ class Client_rep_json(ClientBase):
                 "phone": client.get_phone(),
                 "email": client.get_email()
             })
-        with open(self.filename, "w", encoding="utf-8") as file:
-            json.dump(items, file, ensure_ascii=False, indent=4)
+        with open(self.filename, "w", encoding="utf-8") as f:
+            json.dump(items, f, ensure_ascii=False, indent=4)
