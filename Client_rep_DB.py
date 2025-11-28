@@ -1,78 +1,85 @@
-import psycopg2
-from psycopg2.extras import DictCursor
 from Client import Client
+from DBConnection import DBConnection
 
 class Client_rep_DB:
-
     def __init__(self, host, port, user, password, database):
-        self.conn = psycopg2.connect(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            database=database
-        )
+        # Получаем singleton соединение
+        self.db = DBConnection(host, port, user, password, database)
+        self.conn = self.db.get_connection()
 
-    # Получить количество элементов
+    #получение по айди
+    def get_by_id(self, client_id: int):
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "SELECT client_id, last_name, first_name, patronymic, phone, email "
+                "FROM clients WHERE client_id=%s", (client_id,))
+            row = cur.fetchone()
+            if row:
+                return Client(*row)
+        return None
+
+    def get_k_n_short_list(self, k: int, n: int):
+        offset = (n-1)*k
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "SELECT client_id, last_name, first_name, patronymic, phone, email "
+                "FROM clients ORDER BY client_id LIMIT %s OFFSET %s", (k, offset))
+            rows = cur.fetchall()
+            return [Client(*row) for row in rows]
+
+    def add(self, client: Client):
+        # Проверка на дубликат
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "SELECT client_id FROM clients WHERE last_name=%s AND first_name=%s "
+                "AND patronymic=%s AND phone=%s AND email=%s",
+                (client.get_last_name(), client.get_first_name(), client.get_patronymic(),
+                 client.get_phone(), client.get_email())
+            )
+            existing = cur.fetchone() #берёт одну строку из результата запроса
+            if existing:
+                raise ValueError(f"Клиент с такими данными уже существует (ID={existing[0]})!")
+
+            cur.execute(
+                "INSERT INTO clients (last_name, first_name, patronymic, phone, email) "
+                "VALUES (%s,%s,%s,%s,%s) RETURNING client_id",
+                (client.get_last_name(), client.get_first_name(), client.get_patronymic(),
+                 client.get_phone(), client.get_email())
+            )
+            new_id = cur.fetchone()[0]
+            self.conn.commit()#Подтверждает изменения в базе данных
+            client.set_client_id(new_id)
+            return client
+
+    def update(self, client_id: int, new_client: Client):
+        with self.conn.cursor() as cur:
+            # Проверка на дубликат
+            cur.execute(
+                "SELECT client_id FROM clients WHERE last_name=%s AND first_name=%s "
+                "AND patronymic=%s AND phone=%s AND email=%s AND client_id<>%s",
+                (new_client.get_last_name(), new_client.get_first_name(), new_client.get_patronymic(),
+                 new_client.get_phone(), new_client.get_email(), client_id)
+            )
+            existing = cur.fetchone() #берёт одну строку из результата запроса
+            if existing:
+                raise ValueError(f"Клиент с такими данными уже существует (ID={existing[0]})!")
+
+            cur.execute(
+                "UPDATE clients SET last_name=%s, first_name=%s, patronymic=%s, phone=%s, email=%s "
+                "WHERE client_id=%s",
+                (new_client.get_last_name(), new_client.get_first_name(), new_client.get_patronymic(),
+                 new_client.get_phone(), new_client.get_email(), client_id)
+            )
+            self.conn.commit()
+            return cur.rowcount > 0
+
+    def delete(self, client_id: int):
+        with self.conn.cursor() as cur:
+            cur.execute("DELETE FROM clients WHERE client_id=%s", (client_id,))
+            self.conn.commit()
+            return cur.rowcount > 0
+
     def get_count(self):
         with self.conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM clients;")
+            cur.execute("SELECT COUNT(*) FROM clients")
             return cur.fetchone()[0]
-
-    # Получить объект по ID
-    def get_by_id(self, id):
-        with self.conn.cursor(cursor_factory=DictCursor) as cur:
-            cur.execute("SELECT * FROM clients WHERE id = %s;", (id,))
-            row = cur.fetchone()
-            if row is None:
-                return None
-            return Client(row["id"], row["last_name"], row["first_name"],
-                          row["middle_name"], row["phone"], row["email"])
-
-    # Получить k по счету n элементов
-    def get_k_n_short_list(self, k, n):
-        offset = (n - 1) * k
-        with self.conn.cursor(cursor_factory=DictCursor) as cur:
-            cur.execute(
-                "SELECT * FROM clients ORDER BY id LIMIT %s OFFSET %s;",
-                (k, offset)
-            )
-            rows = cur.fetchall()
-            return [Client(r["id"], r["last_name"], r["first_name"],
-                           r["middle_name"], r["phone"], r["email"]).__repr__()
-                    for r in rows]
-
-    # Добавить объект (генерируем новый ID автоматически)
-    def add(self, client: Client):
-        with self.conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO clients (last_name, first_name, middle_name, phone, email)
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING id;
-            """, (client.get_last_name(), client.get_first_name(), client.get_patronymic(),
-                  client.get_phone(), client.get_email()))
-            new_id = cur.fetchone()[0]
-            self.conn.commit()
-            client.set_client_id(new_id)
-            return new_id
-
-    # Заменить объект по ID
-    def update(self, id, client: Client):
-        with self.conn.cursor() as cur:
-            cur.execute("""
-                UPDATE clients SET
-                last_name=%s,
-                first_name=%s,
-                middle_name=%s,
-                phone=%s,
-                email=%s
-                WHERE id=%s;
-            """, (client.get_last_name(), client.get_first_name(), client.get_patronymic(),
-                  client.get_phone(), client.get_email(), id))
-            self.conn.commit()
-
-    # Удалить объект по ID
-    def delete(self, id):
-        with self.conn.cursor() as cur:
-            cur.execute("DELETE FROM clients WHERE id = %s;", (id,))
-            self.conn.commit()
