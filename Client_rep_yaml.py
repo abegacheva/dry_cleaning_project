@@ -1,27 +1,28 @@
-import yaml
-import os
+import yaml, os
 from Client import Client
 from ClientBase import ClientBase
 
 class Client_rep_yaml(ClientBase):
-    """
-    Реализует методы _load() и _save() для YAML
-    """
-    #Чтение всех значений из YAML
+    def __init__(self, filename: str):
+        self.filename = filename
+        super().__init__()
+
     def _load(self) -> None:
         if not os.path.exists(self.filename):
             self.data = []
             return
-        with open(self.filename, "r", encoding="utf-8") as file:
+
+        with open(self.filename, "r", encoding="utf-8") as f:
             try:
-                items = yaml.safe_load(file)
+                items = yaml.safe_load(f)
             except yaml.YAMLError:
                 items = []
+
         if items is None:
             items = []
-        self.data = [Client(item) for item in items]
 
-    #Запись всех значений в YAML
+        self.data = [Client(**item) for item in items]
+
     def _save(self) -> None:
         items = []
         for client in self.data:
@@ -33,5 +34,6 @@ class Client_rep_yaml(ClientBase):
                 "phone": client.get_phone(),
                 "email": client.get_email()
             })
-        with open(self.filename, "w", encoding="utf-8") as file:
-            yaml.safe_dump(items, file, allow_unicode=True, sort_keys=False)
+
+        with open(self.filename, "w", encoding="utf-8") as f:
+            yaml.safe_dump(items, f, allow_unicode=True, sort_keys=False)
